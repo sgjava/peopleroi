@@ -95,13 +95,33 @@ class Process():
             cv2.namedWindow("source", cv2.CV_WINDOW_AUTOSIZE)
             cv2.namedWindow("motion", cv2.CV_WINDOW_AUTOSIZE)
             cv2.namedWindow("motion history", cv2.CV_WINDOW_AUTOSIZE)
+            cv2.namedWindow("motion ROI", cv2.CV_WINDOW_AUTOSIZE)
             if self.ignoreMask != None:     
                 cv2.namedWindow("mask", cv2.CV_WINDOW_AUTOSIZE)
 
-    def showRects(self, image, rects, winX, winY):
+    def showRects(self, image, rects):
         """Show all rectangles as ROI"""
         imgHeight, imgWidth, imgUnknown = image.shape
-        curX = winX
+        winWidth = 0
+        winHeight = 0
+        # Get window witdh and height from rects
+        for x, y, w, h in rects:
+            y1 = y - self.addHeight
+            if y1 < 0:
+                y1 = 0
+            y2 = y + h + self.addHeight
+            if y2 > imgHeight:
+                y2 = imgHeight
+            x1 = x - self.addWidth
+            if x1 < 0:
+                x1 = 0
+            x2 = x + w + self.addWidth
+            if x2 > imgWidth:
+                x2 = imgWidth
+            winWidth += x2 - x1
+            winHeight = max(winHeight, y2-y1)
+        rectsImg = numpy.zeros((winHeight, winWidth, 3), numpy.uint8)
+        curX = 0
         for x, y, w, h in rects:
             y1 = y - self.addHeight
             if y1 < 0:
@@ -116,16 +136,9 @@ class Process():
             if x2 > imgWidth:
                 x2 = imgWidth
             roi = image[y1:y2, x1:x2]
-            winName = "%d %d %d %d" % (x, y, w, h)
-            cv2.namedWindow(winName, cv2.CV_WINDOW_AUTOSIZE)
-            cv2.moveWindow(winName, curX, winY)
-            cv2.imshow(winName, roi)
-            curX += int(w * 1.1) + 10
-
-    def closeRects(self, rects):
-        """Close all ROI windows"""
-        for x, y, w, h in rects:
-            cv2.destroyWindow("%d %d %d %d" % (x, y, w, h))
+            curX = x2 - x1
+            rectsImg[:y2-y1, :curX] = roi
+        cv2.imshow("motion ROI", rectsImg)
             
     def detectPeople(self, source, target, rects):
         """Do ROI people detection"""  
@@ -166,13 +179,14 @@ class Process():
         # Create black history image
         historyImg = numpy.zeros((self.resizeHeight, self.resizeWidth), numpy.uint8)
         if self.showWindow:
-            cv2.moveWindow("source", imgWidth + 66, 0)
-            cv2.moveWindow("motion", imgWidth + 66, self.resizeHeight + 54)
-            cv2.moveWindow("motion history", imgWidth + self.resizeWidth + 69, self.resizeHeight + 54)
+            cv2.moveWindow("source", imgWidth + 69, 0)
+            cv2.moveWindow("motion", imgWidth + 69, self.resizeHeight + 103)
+            cv2.moveWindow("motion history", imgWidth + self.resizeWidth + 116, self.resizeHeight + 103)
             cv2.imshow("motion history", historyImg)
             if self.ignoreMask != None:     
                 cv2.moveWindow("mask", imgWidth + self.resizeWidth + 69, 0)
                 cv2.imshow("mask", self.maskImg)
+            cv2.moveWindow("motion ROI", 0, imgHeight + 103)
         motion = detect.Motion.Motion(self.resizeWidth, self.resizeHeight, imgWidth, imgHeight,
                                          self.kSize, self.alpha, self.blackThreshold, self.maxChange, self.dilateAmount, self.erodeAmount,
                                          self.markObjects, self.boxColor, self.ignoreAreasBoxColor, self.boxThickness,
@@ -190,9 +204,10 @@ class Process():
         for f in xrange(frames):
             source = cv2.resize(target, (self.resizeWidth, self.resizeHeight), interpolation=cv2.INTER_NEAREST)            
             movementLocations = motion.detect(source, target)
-            if motion.motionPercent > self.startThreshold and len(movementLocations) > 0:
+            if len(movementLocations) > 0:
                 self.logger.debug("%3.2f%% motion detected on frame %d, locations: %s" % (motion.motionPercent, f, movementLocations))
                 if self.showWindow:
+                    self.showRects (source, movementLocations)
                     historyImg = numpy.bitwise_or(motion.grayImg, historyImg)        
                 foundLocations = self.detectPeople(source, target, movementLocations)
                 if len(foundLocations) > 0:
@@ -211,16 +226,13 @@ class Process():
                 cv2.imshow("motion history", historyImg)
                 if motion.grayImg != None:
                     cv2.imshow("motion", motion.grayImg)
-            s, target = self.capture.read()
-            if self.showWindow:
-                if sleep == True:
-                    self.showRects (source, movementLocations, imgWidth + 66, self.resizeHeight * 2 + 84)
-                    key = cv2.waitKey(-1)
-                    self.closeRects (movementLocations)
-                else:
+                if sleep == False:
                     key = cv2.waitKey(1)
+                else:
+                    key = cv2.waitKey(-1)
                 if key == 27:
                     break
+            s, target = self.capture.read()
         if self.showWindow:
             self.logger.info("Writing mask to file: %s" % sys.argv[4])
             # Invert image for mask (black masks motion, white detects motion)
@@ -235,6 +247,7 @@ class Process():
             cv2.destroyWindow("source")
             cv2.destroyWindow("motion")
             cv2.destroyWindow("motion history")
+            cv2.destroyWindow("motion ROI")
             if self.ignoreMask != None:     
                 cv2.destroyWindow("mask")
         del self.writer
