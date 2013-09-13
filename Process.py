@@ -100,11 +100,11 @@ class Process():
                 cv2.namedWindow("mask", cv2.CV_WINDOW_AUTOSIZE)
 
     def showRects(self, image, rects):
-        """Show all rectangles as ROI"""
+        """Show all rectangles"""
         imgHeight, imgWidth, imgUnknown = image.shape
         winWidth = 0
         winHeight = 0
-        # Get window witdh and height from rects
+        # Get image witdh and height from rects
         for x, y, w, h in rects:
             y1 = y - self.addHeight
             if y1 < 0:
@@ -120,6 +120,7 @@ class Process():
                 x2 = imgWidth
             winWidth += x2 - x1
             winHeight = max(winHeight, y2-y1)
+        # Black image
         rectsImg = numpy.zeros((winHeight, winWidth, 3), numpy.uint8)
         curX = 0
         for x, y, w, h in rects:
@@ -135,9 +136,11 @@ class Process():
             x2 = x + w + self.addWidth
             if x2 > imgWidth:
                 x2 = imgWidth
+            # Get ROI
             roi = image[y1:y2, x1:x2]
-            curX = x2 - x1
-            rectsImg[:y2-y1, :curX] = roi
+            # Add to image
+            rectsImg[:roi.shape[0], curX:curX+roi.shape[1]] = roi
+            curX += x2-x1
         cv2.imshow("motion ROI", rectsImg)
             
     def detectPeople(self, source, target, rects):
