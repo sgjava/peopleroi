@@ -23,17 +23,18 @@ class Process():
     """    
     
     def __init__(self, configFileName):
-        print "%s" % configFileName
         self.parser = ConfigParser.SafeConfigParser()
         # Read configuration file
         self.parser.read(configFileName)
         # Set up logger
         self.logger = logging.getLogger("Process")
         self.logger.setLevel(self.parser.get("logging", "level"))
-        formatter = logging.Formatter(self.parser.get("logging", "formatter"))
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
+        # Only add handler once
+        if self.logger.handlers == []:
+            formatter = logging.Formatter(self.parser.get("logging", "formatter"))
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
         self.logger.info("Configuring from file: %s" % configFileName)
         self.logger.info("Logging level: %s" % self.parser.get("logging", "level"))
         self.logger.debug("Logging formatter: %s" % self.parser.get("logging", "formatter"))
@@ -143,7 +144,7 @@ class Process():
             curX += x2-x1
         cv2.imshow("motion ROI", rectsImg)
             
-    def detectPeople(self, source, target, rects):
+    def detectPeopleRoi(self, source, target, rects):
         """Do ROI people detection"""  
         imgHeight, imgWidth, imgUnknown = source.shape
         foundLocations = []
@@ -161,7 +162,7 @@ class Process():
                 x2 = x + w + self.addWidth
                 if x2 > imgWidth:
                     x2 = imgWidth            
-                self.logger.debug("detectPeople %d %d %d %d" % (y1, y2, x1, x2))
+                self.logger.debug("detectPeopleRoi %d %d %d %d" % (y1, y2, x1, x2))
                 sourceRoi = source[y1:y2, x1:x2]
                 targetRoi = target[y1 * self.heightMultiplier:y2 * self.heightMultiplier, x1 * self.widthMultiplier:x2 * self.widthMultiplier]
                 foundLocations = self.people.detect(sourceRoi, targetRoi)
@@ -171,7 +172,15 @@ class Process():
                 self.logger.debug("Width must be %d and height must be %d: w = %d, h = %d" % (self.minWidth, self.minHeight, w, h))
         return foundLocations     
     
-    def run(self):
+    def detectPeople(self, source, target):
+        """Do people detection on full image"""  
+        imgHeight, imgWidth, imgUnknown = source.shape
+        foundLocations = self.people.detect(source, target)
+        if len(foundLocations) > 0:
+            self.logger.debug("Detected people locations: %s" % (foundLocations))
+        return foundLocations     
+  
+    def run(self, useResize, useRoi):
         """Video processing loop."""
         s, target = self.capture.read()
         imgHeight, imgWidth, imgUnknown = target.shape
@@ -194,7 +203,13 @@ class Process():
                                          self.kSize, self.alpha, self.blackThreshold, self.maxChange, self.dilateAmount, self.erodeAmount,
                                          self.markObjects, self.boxColor, self.ignoreAreasBoxColor, self.boxThickness,
                                          self.ignoreAreas, self.maskImg)
-        self.people = detect.People.People(self.resizeWidth, self.resizeHeight, imgWidth, imgHeight,
+        if useResize:
+            peopleWidth = self.resizeWidth
+            peopleHeight = self.resizeHeight
+        else:
+            peopleWidth = imgWidth
+            peopleHeight = imgHeight
+        self.people = detect.People.People(peopleWidth, peopleHeight, imgWidth, imgHeight,
                                              self.hitThreshold, self.winStride, self.padding, self.scale, self.finalThreshold, self.useMeanshiftGrouping,
                                              self.peopleMarkObjects, self.peopleBoxColor, self.filteredBoxColor, self.peopleIgnoreAreasBoxColor,
                                              self.peopleBoxThickness, self.peopleIgnoreAreas)
@@ -211,8 +226,14 @@ class Process():
                 self.logger.debug("%3.2f%% motion detected on frame %d, locations: %s" % (motion.motionPercent, f, movementLocations))
                 if self.showWindow:
                     self.showRects (source, movementLocations)
-                    historyImg = numpy.bitwise_or(motion.grayImg, historyImg)        
-                foundLocations = self.detectPeople(source, target, movementLocations)
+                    historyImg = numpy.bitwise_or(motion.grayImg, historyImg)
+                if useResize:
+                    if useRoi:
+                        foundLocations = self.detectPeopleRoi(source, target, movementLocations)
+                    else:
+                        foundLocations = self.detectPeople(source, target)
+                else:
+                    foundLocations = self.detectPeople(target, target)
                 if len(foundLocations) > 0:
                     self.logger.debug("People detected on frame %d, locations: %s" % (f, foundLocations))
                     self.writer.write(target)
@@ -254,14 +275,24 @@ class Process():
             if self.ignoreMask != None:     
                 cv2.destroyWindow("mask")
         del self.writer
-
+        
 if __name__ == "__main__":
     try:
         process = Process(sys.argv[1])
-        process.run()
+        process.logger.info("*** Resize = False, ROI = False*** ")
+        process.run(useResize=False, useRoi=False)
+        process.cleanUp()
+        process = Process(sys.argv[1])
+        process.logger.info("*** Resize = True, ROI = False*** ")
+        process.run(useResize=True, useRoi=False)
+        process.cleanUp()
+        process = Process(sys.argv[1])
+        process.logger.info("*** Resize = True, ROI = True*** ")
+        process.run(useResize=True, useRoi=True)
+        process.cleanUp()
     except:
         sys.stderr.write("%s " % datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S,%f"))
         traceback.print_exc(file=sys.stderr)
     # Do cleanup
-    process.cleanUp()
+    #process.cleanUp()
 
