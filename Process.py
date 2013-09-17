@@ -16,10 +16,10 @@ class Process():
     
     sys.argv[1] = Configuration file
     sys.argv[2] = Video input file
-    sys.argv[3] = Video output file
+    sys.argv[3] = Video output path
     sys.argv[4] = Mask output file
     
-    ../config/test.ini ../resources/edger.avi ../resources/people-detect.avi ../resources/mask.png
+    ../config/test.ini ../resources/edger.avi ../output/ ../output/mask.png
     """    
     
     def __init__(self, configFileName):
@@ -182,12 +182,22 @@ class Process():
   
     def run(self, useResize, useRoi):
         """Video processing loop."""
+        self.logger.info("*** Resize = %s, ROI = %s ***" % (useResize, useRoi))
         s, target = self.capture.read()
         imgHeight, imgWidth, imgUnknown = target.shape
         frames = int(self.capture.get(cv.CV_CAP_PROP_FRAME_COUNT)) - 1
         self.logger.info("Image dimensions %dw x %dh, %d frames" % (imgWidth, imgHeight, frames))
-        self.logger.info("Writing video to file: %s" % sys.argv[3])
-        self.writer.open(sys.argv[3], int(self.capture.get(cv.CV_CAP_PROP_FOURCC)), 1, (imgWidth, imgHeight))
+        if useResize:
+            fileName = "resize-"
+        else:
+            fileName = "noresize-"
+        if useRoi:
+            fileName += "roi-"
+        else:
+            fileName += "noroi-"
+        fileName = sys.argv[3] + fileName + os.path.basename(sys.argv[2])
+        self.logger.info("Writing video to file: %s" % fileName)
+        self.writer.open(fileName, int(self.capture.get(cv.CV_CAP_PROP_FOURCC)), 1, (imgWidth, imgHeight))
         # Create black history image
         historyImg = numpy.zeros((self.resizeHeight, self.resizeWidth), numpy.uint8)
         if self.showWindow:
@@ -198,7 +208,7 @@ class Process():
             if self.ignoreMask != None:     
                 cv2.moveWindow("mask", imgWidth + self.resizeWidth + 69, 0)
                 cv2.imshow("mask", self.maskImg)
-            cv2.moveWindow("motion ROI", 0, imgHeight + 103)
+            cv2.moveWindow("motion ROI", imgWidth + 69, self.resizeHeight*2 + 183)
         motion = detect.Motion.Motion(self.resizeWidth, self.resizeHeight, imgWidth, imgHeight,
                                          self.kSize, self.alpha, self.blackThreshold, self.maxChange, self.dilateAmount, self.erodeAmount,
                                          self.markObjects, self.boxColor, self.ignoreAreasBoxColor, self.boxThickness,
@@ -279,15 +289,12 @@ class Process():
 if __name__ == "__main__":
     try:
         process = Process(sys.argv[1])
-        process.logger.info("*** Resize = False, ROI = False*** ")
         process.run(useResize=False, useRoi=False)
         process.cleanUp()
         process = Process(sys.argv[1])
-        process.logger.info("*** Resize = True, ROI = False*** ")
         process.run(useResize=True, useRoi=False)
         process.cleanUp()
         process = Process(sys.argv[1])
-        process.logger.info("*** Resize = True, ROI = True*** ")
         process.run(useResize=True, useRoi=True)
         process.cleanUp()
     except:
