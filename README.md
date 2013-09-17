@@ -1,9 +1,10 @@
 # People detection using motion ROI
 
-This compares and contrasts using image resizing and motion detection to obtain
-a ROI (region of interest) versus processing frames and regions unchanged.
-People detection is used in this example, but any type of image analysis can
-benefit from the techniques contained within.
+[People ROI](https://github.com/sgjava/peopleroi/wiki) compares and contrasts
+using image resizing and motion detection to obtain a ROI (region of interest)
+versus processing frames and regions unchanged. People detection is used in
+this example, but any type of image analysis can benefit from the techniques
+contained within.
 
 ### System requirements
 
