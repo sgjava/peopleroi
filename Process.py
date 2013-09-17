@@ -20,9 +20,11 @@ class Process():
     sys.argv[4] = Mask output file
     
     ../config/test.ini ../resources/edger.avi ../output/ ../output/mask.png
+    
     """    
     
     def __init__(self, configFileName):
+        """Read in configuration, set up video writer and setup windows"""
         self.parser = ConfigParser.SafeConfigParser()
         # Read configuration file
         self.parser.read(configFileName)
@@ -38,6 +40,7 @@ class Process():
         self.logger.info("Configuring from file: %s" % configFileName)
         self.logger.info("Logging level: %s" % self.parser.get("logging", "level"))
         self.logger.debug("Logging formatter: %s" % self.parser.get("logging", "formatter"))
+        self.profile = self.parser.getboolean("profiling", "profile")
         # Set video related data attributes
         self.resizeWidth = self.parser.getint("video", "resizeWidth")
         self.resizeHeight = self.parser.getint("video", "resizeHeight")
@@ -90,6 +93,7 @@ class Process():
         self.logger.info("Reading video from file: %s" % sys.argv[2])
         self.capture = cv2.VideoCapture(sys.argv[2])
         self.writer = cv2.VideoWriter()
+        # Setup windows
         if self.showWindow:
             cv2.namedWindow("target", cv2.CV_WINDOW_AUTOSIZE)
             cv2.moveWindow("target", 0, 0)
@@ -101,11 +105,11 @@ class Process():
                 cv2.namedWindow("mask", cv2.CV_WINDOW_AUTOSIZE)
 
     def showRects(self, image, rects):
-        """Show all rectangles"""
+        """Show all rectangles in a single window"""
         imgHeight, imgWidth, imgUnknown = image.shape
         winWidth = 0
         winHeight = 0
-        # Get image witdh and height from rects
+        # Get consolidated image width and height from rects
         for x, y, w, h in rects:
             y1 = y - self.addHeight
             if y1 < 0:
@@ -124,6 +128,7 @@ class Process():
         # Black image
         rectsImg = numpy.zeros((winHeight, winWidth, 3), numpy.uint8)
         curX = 0
+        # Render ROIs in one image
         for x, y, w, h in rects:
             y1 = y - self.addHeight
             if y1 < 0:
@@ -145,7 +150,7 @@ class Process():
         cv2.imshow("motion ROI", rectsImg)
             
     def detectPeopleRoi(self, source, target, rects):
-        """Do ROI people detection"""  
+        """Do people detection on ROIs"""  
         imgHeight, imgWidth, imgUnknown = source.shape
         foundLocations = []
         for x, y, w, h in rects:
@@ -187,6 +192,7 @@ class Process():
         imgHeight, imgWidth, imgUnknown = target.shape
         frames = int(self.capture.get(cv.CV_CAP_PROP_FRAME_COUNT)) - 1
         self.logger.info("Image dimensions %dw x %dh, %d frames" % (imgWidth, imgHeight, frames))
+        # Build video file name
         if useResize:
             fileName = "resize-"
         else:
@@ -295,11 +301,18 @@ if __name__ == "__main__":
         process.run(useResize=True, useRoi=False)
         process.cleanUp()
         process = Process(sys.argv[1])
+        # See if we want to profile run
+        if process.profile:
+            process.logger.info("Profiling enabled")
+            process.collector = plop.collector.Collector(interval=0.01, mode='prof')
+            process.collector.start()
         process.run(useResize=True, useRoi=True)
+        # Stop profiling            
+        if process.profile:
+            process.logger.info("Stopping profiling")
+            process.collector.stop()
         process.cleanUp()
     except:
         sys.stderr.write("%s " % datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S,%f"))
         traceback.print_exc(file=sys.stderr)
-    # Do cleanup
-    #process.cleanUp()
-
+     
