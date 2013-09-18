@@ -9,7 +9,7 @@ Copyright (c) Steven P. Goldsmith
 All rights reserved.
 """
 
-import ConfigParser, logging, sys, os, traceback, socket, importlib, time, datetime, numpy, cv2, cv2.cv as cv, detect.Motion, detect.People, plop.collector
+import ConfigParser, logging, sys, os, traceback, time, datetime, numpy, cv2, cv2.cv as cv, detect.Motion, detect.People, cProfile, pstats
 
 class Process():
     """Main class used to acquire and process frames for people detection using motion detection ROI.
@@ -295,22 +295,31 @@ class Process():
 if __name__ == "__main__":
     try:
         process = Process(sys.argv[1])
-        process.run(useResize=False, useRoi=False)
-        process.cleanUp()
-        process = Process(sys.argv[1])
-        process.run(useResize=True, useRoi=False)
-        process.cleanUp()
-        process = Process(sys.argv[1])
-        # See if we want to profile run
         if process.profile:
             process.logger.info("Profiling enabled")
-            process.collector = plop.collector.Collector(interval=0.01, mode='prof')
-            process.collector.start()
-        process.run(useResize=True, useRoi=True)
-        # Stop profiling            
+            cProfile.run("process.run(useResize=False, useRoi=False)", "%srestats" % sys.argv[3])
+            stats = pstats.Stats("%srestats" % sys.argv[3])
+            stats.strip_dirs().sort_stats('time').print_stats(10)
+        else:
+            process.run(useResize=False, useRoi=False)
+        process.cleanUp()
+        process = Process(sys.argv[1])
         if process.profile:
-            process.logger.info("Stopping profiling")
-            process.collector.stop()
+            process.logger.info("Profiling enabled")
+            cProfile.run("process.run(useResize=True, useRoi=False)", "%srestats" % sys.argv[3])
+            stats = pstats.Stats("%srestats" % sys.argv[3])
+            stats.strip_dirs().sort_stats('time').print_stats(10)
+        else:
+            process.run(useResize=True, useRoi=False)
+        process.cleanUp()
+        process = Process(sys.argv[1])
+        if process.profile:
+            process.logger.info("Profiling enabled")
+            cProfile.run("process.run(useResize=True, useRoi=True)", "%srestats" % sys.argv[3])
+            stats = pstats.Stats("%srestats" % sys.argv[3])
+            stats.strip_dirs().sort_stats('time').print_stats(10)
+        else:
+            process.run(useResize=True, useRoi=True)
         process.cleanUp()
     except:
         sys.stderr.write("%s " % datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S,%f"))
