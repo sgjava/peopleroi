@@ -6,27 +6,6 @@ versus processing frames and regions unchanged. People detection is used in
 this example, but any type of image analysis can benefit from the techniques
 contained within.
 
-### System requirements
-
-All development and testing were performed on Ubuntu 64 bit Server/Desktop version
-12.04.3 x86_64, 12.10 x86_64 and 32 bit 12.10 armv7l using PicUntu. The code and
-dependencies will surely work on other Linux distributions and perhaps Windows.
-
-### Installation
-
-1. Install OpenCV (choose which version)
-    * OpenCV 2.4.6.1 from source (best choice):
-        * `sudo su -`
-        * `wget https://raw.github.com/sgjava/cvp/master/scripts/ubuntu1204/install-opencv2461.sh`
-        * `chmod a+x install-opencv2461.sh`
-        * `./install-opencv2461.sh` (this will take a while, go smoke a cigar. On RK3066 based Mini PC it can take 4 or 5 hours.)
-    * OpenCV 2.3.1 pre-built packages (I'm not supporting this version, so you will have to fix up the code as needed):
-        * `sudo apt-get install python-opencv`
-2. Install the rest of the dependencies:
-    * `sudo su -`
-    * `easy_install plop`
-    * `easy_install tornado`
-
 ### FreeBSD License
 
 Copyright (c) Steven P. Goldsmith
