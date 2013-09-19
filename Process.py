@@ -14,6 +14,12 @@ import ConfigParser, logging, sys, os, traceback, time, datetime, numpy, cv2, cv
 class Process():
     """Main class used to acquire and process frames for people detection using motion detection ROI.
     
+    Three methods are compared:
+    
+    1. Full size image
+    2. Resized image
+    3. Resized image using motion detection to identify ROIs
+    
     sys.argv[1] = Configuration file
     sys.argv[2] = Video input file
     sys.argv[3] = Video output path
@@ -104,57 +110,17 @@ class Process():
             if self.ignoreMask != None:     
                 cv2.namedWindow("mask", cv2.CV_WINDOW_AUTOSIZE)
 
-    def showRects(self, image, rects):
-        """Show all rectangles in a single window"""
+    def padRects(self, image, rects, filter):
+        """Pad rectangles, get image dimensions, ROI composite image size for display and total ROI pixels"""
         imgHeight, imgWidth, imgUnknown = image.shape
         winWidth = 0
         winHeight = 0
+        roiPixels = 0
+        paddedRects = []
         # Get consolidated image width and height from rects
         for x, y, w, h in rects:
-            y1 = y - self.addHeight
-            if y1 < 0:
-                y1 = 0
-            y2 = y + h + self.addHeight
-            if y2 > imgHeight:
-                y2 = imgHeight
-            x1 = x - self.addWidth
-            if x1 < 0:
-                x1 = 0
-            x2 = x + w + self.addWidth
-            if x2 > imgWidth:
-                x2 = imgWidth
-            winWidth += x2 - x1
-            winHeight = max(winHeight, y2-y1)
-        # Black image
-        rectsImg = numpy.zeros((winHeight, winWidth, 3), numpy.uint8)
-        curX = 0
-        # Render ROIs in one image
-        for x, y, w, h in rects:
-            y1 = y - self.addHeight
-            if y1 < 0:
-                y1 = 0
-            y2 = y + h + self.addHeight
-            if y2 > imgHeight:
-                y2 = imgHeight
-            x1 = x - self.addWidth
-            if x1 < 0:
-                x1 = 0
-            x2 = x + w + self.addWidth
-            if x2 > imgWidth:
-                x2 = imgWidth
-            # Get ROI
-            roi = image[y1:y2, x1:x2]
-            # Add to image
-            rectsImg[:roi.shape[0], curX:curX+roi.shape[1]] = roi
-            curX += x2-x1
-        cv2.imshow("motion ROI", rectsImg)
-            
-    def detectPeopleRoi(self, source, target, rects):
-        """Do people detection on ROIs"""  
-        imgHeight, imgWidth, imgUnknown = source.shape
-        foundLocations = []
-        for x, y, w, h in rects:
-            if w > self.minWidth and h > self.minHeight:
+            # Filter based on size if True
+            if (not filter) or (filter and w > self.minWidth and h > self.minHeight):
                 y1 = y - self.addHeight
                 if y1 < 0:
                     y1 = 0
@@ -166,15 +132,41 @@ class Process():
                     x1 = 0
                 x2 = x + w + self.addWidth
                 if x2 > imgWidth:
-                    x2 = imgWidth            
-                self.logger.debug("detectPeopleRoi %d %d %d %d" % (y1, y2, x1, x2))
-                sourceRoi = source[y1:y2, x1:x2]
-                targetRoi = target[y1 * self.heightMultiplier:y2 * self.heightMultiplier, x1 * self.widthMultiplier:x2 * self.widthMultiplier]
-                foundLocations = self.people.detect(sourceRoi, targetRoi)
-                if len(foundLocations) > 0:
-                    self.logger.debug("Detected people locations: %s" % (foundLocations))
+                    x2 = imgWidth
+                paddedRects.append([x1, y1, x2 - x1, y2 - y1])
+                winWidth += x2 - x1
+                winHeight = max(winHeight, y2 - y1)
             else:
                 self.logger.debug("Width must be %d and height must be %d: w = %d, h = %d" % (self.minWidth, self.minHeight, w, h))
+        return paddedRects, imgHeight, imgWidth, winHeight, winWidth, roiPixels
+                
+    def showRects(self, image, rects):
+        """Show all rectangles in a single window"""
+        paddedRects, imgHeight, imgWidth, winHeight, winWidth, roiPixels = self.padRects(image, rects, False)
+        # Black image
+        rectsImg = numpy.zeros((winHeight, winWidth, 3), numpy.uint8)
+        curX = 0
+        # Render ROIs in one image
+        for x, y, w, h in paddedRects:
+            # Get ROI
+            roi = image[y:y + h, x:x + w]
+            # Add to image
+            rectsImg[:roi.shape[0], curX:curX + roi.shape[1]] = roi
+            curX += w
+        cv2.imshow("motion ROI", rectsImg)
+            
+    def detectPeopleRoi(self, source, target, rects):
+        """Do people detection on ROIs"""  
+        paddedRects, imgHeight, imgWidth, winHeight, winWidth, roiPixels = self.padRects(source, rects, True)
+        sourcePixels = imgHeight * imgWidth
+        foundLocations = []
+        for x, y, w, h in paddedRects:
+            self.logger.debug("detectPeopleRoi %d %d %d %d" % (x, y, w, h))
+            sourceRoi = source[y:y + h, x:x + w]
+            targetRoi = target[y * self.heightMultiplier:y + h * self.heightMultiplier, x * self.widthMultiplier:x + w * self.widthMultiplier]
+            foundLocations = self.people.detect(sourceRoi, targetRoi)
+            if len(foundLocations) > 0:
+                self.logger.debug("Detected people locations: %s" % (foundLocations))
         return foundLocations     
     
     def detectPeople(self, source, target):
@@ -214,7 +206,7 @@ class Process():
             if self.ignoreMask != None:     
                 cv2.moveWindow("mask", imgWidth + self.resizeWidth + 69, 0)
                 cv2.imshow("mask", self.maskImg)
-            cv2.moveWindow("motion ROI", imgWidth + 69, self.resizeHeight*2 + 183)
+            cv2.moveWindow("motion ROI", imgWidth + 69, self.resizeHeight * 2 + 183)
         motion = detect.Motion.Motion(self.resizeWidth, self.resizeHeight, imgWidth, imgHeight,
                                          self.kSize, self.alpha, self.blackThreshold, self.maxChange, self.dilateAmount, self.erodeAmount,
                                          self.markObjects, self.boxColor, self.ignoreAreasBoxColor, self.boxThickness,
@@ -241,7 +233,6 @@ class Process():
             if len(movementLocations) > 0:
                 self.logger.debug("%3.2f%% motion detected on frame %d, locations: %s" % (motion.motionPercent, f, movementLocations))
                 if self.showWindow:
-                    self.showRects (source, movementLocations)
                     historyImg = numpy.bitwise_or(motion.grayImg, historyImg)
                 if useResize:
                     if useRoi:
@@ -250,6 +241,8 @@ class Process():
                         foundLocations = self.detectPeople(source, target)
                 else:
                     foundLocations = self.detectPeople(target, target)
+                if self.showWindow:
+                    self.showRects (source, movementLocations)
                 if len(foundLocations) > 0:
                     self.logger.debug("People detected on frame %d, locations: %s" % (f, foundLocations))
                     self.writer.write(target)
@@ -324,4 +317,3 @@ if __name__ == "__main__":
     except:
         sys.stderr.write("%s " % datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S,%f"))
         traceback.print_exc(file=sys.stderr)
-     
