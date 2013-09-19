@@ -110,7 +110,7 @@ class Process():
             if self.ignoreMask != None:     
                 cv2.namedWindow("mask", cv2.CV_WINDOW_AUTOSIZE)
 
-    def padRects(self, image, rects, filter):
+    def padRects(self, image, rects, useFilter):
         """Pad rectangles, get image dimensions, ROI composite image size for display and total ROI pixels"""
         imgHeight, imgWidth, imgUnknown = image.shape
         winWidth = 0
@@ -120,7 +120,7 @@ class Process():
         # Get consolidated image width and height from rects
         for x, y, w, h in rects:
             # Filter based on size if True
-            if (not filter) or (filter and w > self.minWidth and h > self.minHeight):
+            if (not useFilter) or (useFilter and w > self.minWidth and h > self.minHeight):
                 y1 = y - self.addHeight
                 if y1 < 0:
                     y1 = 0
