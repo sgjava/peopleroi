@@ -11,7 +11,7 @@ All rights reserved.
 
 import ConfigParser, logging, sys, os, traceback, time, datetime, numpy, cv2, cv2.cv as cv, detect.Motion, detect.People, cProfile, pstats
 
-class Process():
+class ProcessVideo():
     """Main class used to acquire and process frames for people detection using motion detection ROI.
     
     Three methods are compared:
@@ -35,7 +35,7 @@ class Process():
         # Read configuration file
         self.parser.read(configFileName)
         # Set up logger
-        self.logger = logging.getLogger("Process")
+        self.logger = logging.getLogger("ProcessVideo")
         self.logger.setLevel(self.parser.get("logging", "level"))
         # Only add handler once
         if self.logger.handlers == []:
@@ -95,6 +95,7 @@ class Process():
                 self.peopleIgnoreAreas = None
         else:
             self.peopleIgnoreAreas = numpy.array(eval(self.parser.get("peopleDetect", "ignoreAreas"), {}, {}), dtype=numpy.int32)
+        self.playbackFps = self.parser.getfloat("peopleDetect", "playbackFps")
         # Capture file
         self.logger.info("Reading video from file: %s" % sys.argv[2])
         self.capture = cv2.VideoCapture(sys.argv[2])
@@ -195,7 +196,7 @@ class Process():
             fileName += "noroi-"
         fileName = sys.argv[3] + fileName + os.path.basename(sys.argv[2])
         self.logger.info("Writing video to file: %s" % fileName)
-        self.writer.open(fileName, int(self.capture.get(cv.CV_CAP_PROP_FOURCC)), 1, (imgWidth, imgHeight))
+        self.writer.open(fileName, int(self.capture.get(cv.CV_CAP_PROP_FOURCC)), self.playbackFps, (imgWidth, imgHeight))
         # Create black history image
         historyImg = numpy.zeros((self.resizeHeight, self.resizeWidth), numpy.uint8)
         if self.showWindow:
@@ -287,7 +288,7 @@ class Process():
         
 if __name__ == "__main__":
     try:
-        process = Process(sys.argv[1])
+        process = ProcessVideo(sys.argv[1])
         if process.profile:
             process.logger.info("Profiling enabled")
             cProfile.run("process.run(useResize=False, useRoi=False)", "%srestats" % sys.argv[3])
@@ -296,7 +297,7 @@ if __name__ == "__main__":
         else:
             process.run(useResize=False, useRoi=False)
         process.cleanUp()
-        process = Process(sys.argv[1])
+        process = ProcessVideo(sys.argv[1])
         if process.profile:
             process.logger.info("Profiling enabled")
             cProfile.run("process.run(useResize=True, useRoi=False)", "%srestats" % sys.argv[3])
@@ -305,7 +306,7 @@ if __name__ == "__main__":
         else:
             process.run(useResize=True, useRoi=False)
         process.cleanUp()
-        process = Process(sys.argv[1])
+        process = ProcessVideo(sys.argv[1])
         if process.profile:
             process.logger.info("Profiling enabled")
             cProfile.run("process.run(useResize=True, useRoi=True)", "%srestats" % sys.argv[3])

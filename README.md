@@ -1,5 +1,7 @@
 # People detection using motion ROI
 
+![Screen Shot](images/peopleroi.png)
+
 [People ROI](https://github.com/sgjava/peopleroi/wiki) compares and contrasts
 using image resizing and motion detection to obtain a ROI (region of interest)
 versus processing frames and regions unchanged. People detection is used in
