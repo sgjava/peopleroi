@@ -25,7 +25,7 @@ class ProcessVideo():
     sys.argv[3] = Video output path
     sys.argv[4] = Mask output file
     
-    ../config/test.ini ../resources/edger.avi ../output/ ../output/mask.png
+    ../config/320x240.ini ../resources/edger.avi ../output/ ../output/mask.png
     
     """    
     
