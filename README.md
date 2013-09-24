@@ -6,7 +6,7 @@
 using image resizing and motion detection to obtain a ROI (region of interest)
 versus processing frames and regions unchanged. People detection is used in
 this example, but any type of image analysis can benefit from the techniques
-contained within.
+contained within. Performance gains are in the 10 to 100 times range.
 
 ### FreeBSD License
 
