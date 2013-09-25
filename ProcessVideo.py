@@ -184,7 +184,7 @@ class ProcessVideo():
         s, target = self.capture.read()
         imgHeight, imgWidth, imgUnknown = target.shape
         frames = int(self.capture.get(cv.CV_CAP_PROP_FRAME_COUNT)) - 1
-        self.logger.info("Image dimensions %dw x %dh, %d frames" % (imgWidth, imgHeight, frames))
+        self.logger.info("Image dimensions: %dw x %dh, resize dimensions: %dw x %dh, %d frames" % (imgWidth, imgHeight, self.resizeWidth, self.resizeHeight, frames))
         # Build video file name
         if useResize:
             fileName = "resize-"
