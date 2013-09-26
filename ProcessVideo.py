@@ -27,6 +27,12 @@ class ProcessVideo():
     
     ../config/320x240.ini ../resources/edger.avi ../output/ ../output/mask.png
     
+    How to get sample youtube videos for testing:
+    
+    youtube-dl -o example.flv "https://www.youtube.com/watch?v=ut6AUpH7oMg"
+    
+    ffmpeg -i example.flv -acodec copy example.avi
+    
     """    
     
     def __init__(self, configFileName):
