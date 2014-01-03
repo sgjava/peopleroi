@@ -25,7 +25,7 @@ class ProcessVideo():
     sys.argv[3] = Video output path
     sys.argv[4] = Mask output file
     
-    ../config/320x240.ini ../resources/edger.avi ../output/ ../output/mask.png
+    ./config/320x240.ini ./resources/edger.avi ./output/ ./output/mask.png
     
     How to get sample youtube videos for testing:
     
