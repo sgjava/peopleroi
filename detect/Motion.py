@@ -55,7 +55,7 @@ class Motion(DetectBase.DetectBase):
         # The bright areas of the image (the background, apparently), get thinner, whereas the dark zones bigger
         source = cv2.erode(source, None, iterations=self.erodeAmount);
         # Find contours
-        contours, heirarchy = cv2.findContours(source, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        image, contours, heirarchy = cv2.findContours(source, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         # Add objects with motion
         movementLocations = []
         for contour in contours:

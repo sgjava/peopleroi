@@ -9,7 +9,7 @@ Copyright (c) Steven P. Goldsmith
 All rights reserved.
 """
 
-import ConfigParser, logging, sys, os, traceback, time, datetime, numpy, cv2, cv2.cv as cv, detect.Motion, detect.People, cProfile, pstats
+import ConfigParser, logging, sys, os, traceback, time, datetime, numpy, cv2, detect.Motion, detect.People, cProfile, pstats
 
 class ProcessVideo():
     """Main class used to acquire and process frames for people detection using motion detection ROI.
@@ -189,7 +189,7 @@ class ProcessVideo():
         self.logger.info("*** Resize = %s, ROI = %s ***" % (useResize, useRoi))
         s, target = self.capture.read()
         imgHeight, imgWidth, imgUnknown = target.shape
-        frames = int(self.capture.get(cv.CV_CAP_PROP_FRAME_COUNT)) - 1
+        frames = int(self.capture.get(cv2.CAP_PROP_FRAME_COUNT)) - 1
         self.logger.info("Image dimensions: %dw x %dh, resize dimensions: %dw x %dh, %d frames" % (imgWidth, imgHeight, self.resizeWidth, self.resizeHeight, frames))
         # Build video file name
         if useResize:
@@ -202,7 +202,7 @@ class ProcessVideo():
             fileName += "noroi-"
         fileName = sys.argv[3] + fileName + os.path.basename(sys.argv[2])
         self.logger.info("Writing video to file: %s" % fileName)
-        self.writer.open(fileName, int(self.capture.get(cv.CV_CAP_PROP_FOURCC)), self.playbackFps, (imgWidth, imgHeight))
+        self.writer.open(fileName, int(self.capture.get(cv2.CAP_PROP_FOURCC)), self.playbackFps, (imgWidth, imgHeight))
         # Create black history image
         historyImg = numpy.zeros((self.resizeHeight, self.resizeWidth), numpy.uint8)
         if self.showWindow:
