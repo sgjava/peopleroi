@@ -108,14 +108,14 @@ class ProcessVideo():
         self.writer = cv2.VideoWriter()
         # Setup windows
         if self.showWindow:
-            cv2.namedWindow("target", cv2.CV_WINDOW_AUTOSIZE)
+            cv2.namedWindow("target", cv2.WINDOW_AUTOSIZE)
             cv2.moveWindow("target", 0, 0)
-            cv2.namedWindow("source", cv2.CV_WINDOW_AUTOSIZE)
-            cv2.namedWindow("motion", cv2.CV_WINDOW_AUTOSIZE)
-            cv2.namedWindow("motion history", cv2.CV_WINDOW_AUTOSIZE)
-            cv2.namedWindow("motion ROI", cv2.CV_WINDOW_AUTOSIZE)
+            cv2.namedWindow("source", cv2.WINDOW_AUTOSIZE)
+            cv2.namedWindow("motion", cv2.WINDOW_AUTOSIZE)
+            cv2.namedWindow("motion history", cv2.WINDOW_AUTOSIZE)
+            cv2.namedWindow("motion ROI", cv2.WINDOW_AUTOSIZE)
             if self.ignoreMask != None:     
-                cv2.namedWindow("mask", cv2.CV_WINDOW_AUTOSIZE)
+                cv2.namedWindow("mask", cv2.WINDOW_AUTOSIZE)
 
     def padRects(self, image, rects, useFilter):
         """Pad rectangles, get image dimensions, ROI composite image size for display and total ROI pixels"""
